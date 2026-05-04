@@ -1,32 +1,27 @@
-# Byte-compiled / optimized / DLL files
+# Python byte code
 __pycache__/
+*.pyc
+*.pyo
+*.pyd
 *.py[cod]
-*$py.class
 
-# JSON data file
+# JSON data file (will be created automatically)
 trainings.json
 
-# Distribution / packaging
-dist/
-build/
-*.egg-info/
-
-# PyInstaller
-*.spec
-
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
-
-# IDE and editors
+# IDE files
 .vscode/
 .idea/
 *.swp
 *.swo
 
-# OS generated files
+# OS files
 .DS_Store
 Thumbs.db
+
+# Distribution
+dist/
+build/
+*.egg-info/
 
 # Logs
 *.log
