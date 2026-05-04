@@ -1,0 +1,165 @@
+import tkinter as tk
+from tkinter import messagebox, ttk
+import json
+import os
+
+class ContactBookApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Телефонная книга")
+        self.root.geometry("500x400")
+
+        # Файл для сохранения данных
+        self.data_file = "contacts.json"
+        self.contacts = self.load_contacts()
+
+
+        self.setup_ui()
+        self.refresh_contact_list()
+
+    def setup_ui(self):
+        # Фрейм для ввода данных
+        input_frame = ttk.Frame(self.root)
+        input_frame.pack(pady=10, padx=20, fill="x")
+
+        ttk.Label(input_frame, text="Имя:").grid(row=0, column=0, sticky="w")
+        self.name_entry = ttk.Entry(input_frame, width=30)
+        self.name_entry.grid(row=0, column=1, padx=5, pady=5)
+
+        ttk.Label(input_frame, text="Номер:").grid(row=1, column=0, sticky="w")
+        self.phone_entry = ttk.Entry(input_frame, width=30)
+        self.phone_entry.grid(row=1, column=1, padx=5, pady=5)
+
+        # Фрейм для кнопок
+        button_frame = ttk.Frame(self.root)
+        button_frame.pack(pady=5)
+
+        ttk.Button(button_frame, text="Добавить", command=self.add_contact).pack(side="left", padx=5)
+        ttk.Button(button_frame, text="Удалить", command=self.delete_contact).pack(side="left", padx=5)
+        ttk.Button(button_frame, text="Поиск", command=self.search_contact).pack(side="left", padx=5)
+        ttk.Button(button_frame, text="Очистить", command=self.clear_fields).pack(side="left", padx=5)
+
+        # Поле поиска
+        search_frame = ttk.Frame(self.root)
+        search_frame.pack(pady=5, padx=20, fill="x")
+        ttk.Label(search_frame, text="Поиск:").pack(side="left")
+        self.search_entry = ttk.Entry(search_frame, width=25)
+        self.search_entry.pack(side="left", padx=5)
+        self.search_entry.bind("<KeyRelease>", lambda e: self.search_contact())
+
+
+        # Список контактов
+        list_frame = ttk.LabelFrame(self.root, text="Контакты")
+        list_frame.pack(pady=10, padx=20, fill="both", expand=True)
+
+
+        # Создаём Treeview с двумя колонками
+        columns = ("name", "phone")
+        self.contact_tree = ttk.Treeview(list_frame, columns=columns, show="headings", height=12)
+        self.contact_tree.heading("name", text="Имя")
+        self.contact_tree.heading("phone", text="Номер")
+        self.contact_tree.column("name", width=200)
+        self.contact_tree.column("phone", width=150)
+
+        # Добавляем полосу прокрутки
+        scrollbar = ttk.Scrollbar(list_frame, orient="vertical", command=self.contact_tree.yview)
+        self.contact_tree.configure(yscrollcommand=scrollbar.set)
+
+        self.contact_tree.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+    def load_contacts(self):
+        """Загружает контакты из JSON‑файла"""
+        if os.path.exists(self.data_file):
+            try:
+                with open(self.data_file, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            except (json.JSONDecodeError, IOError):
+                messagebox.showerror("Ошибка", "Не удалось загрузить данные. Создан новый файл.")
+                return []
+        return []
+
+
+    def save_contacts(self):
+        """Сохраняет контакты в JSON‑файл"""
+        try:
+            with open(self.data_file, 'w', encoding='utf-8') as f:
+                json.dump(self.contacts, f, ensure_ascii=False, indent=2)
+        except IOError:
+            messagebox.showerror("Ошибка", "Не удалось сохранить данные.")
+
+    def refresh_contact_list(self):
+        """Обновляет отображение списка контактов"""
+        # Очищаем текущий список
+        for item in self.contact_tree.get_children():
+            self.contact_tree.delete(item)
+
+        # Заполняем данными
+        for contact in self.contacts:
+            self.contact_tree.insert("", "end", values=(contact["name"], contact["phone"]))
+
+    def add_contact(self):
+        """Добавляет новый контакт"""
+        name = self.name_entry.get().strip()
+        phone = self.phone_entry.get().strip()
+
+        if not name or not phone:
+            messagebox.showwarning("Предупреждение", "Заполните все поля!")
+            return
+
+        # Проверяем, нет ли уже такого контакта
+        if any(contact["name"] == name for contact in self.contacts):
+            messagebox.showwarning("Предупреждение", "Контакт с таким именем уже существует!")
+            return
+
+        # Добавляем новый контакт
+        self.contacts.append({"name": name, "phone": phone})
+        self.save_contacts()
+        self.refresh_contact_list()
+        self.clear_fields()
+        messagebox.showinfo("Успех", "Контакт добавлен!")
+
+
+    def delete_contact(self):
+        """Удаляет выбранный контакт"""
+        selected = self.contact_tree.selection()
+        if not selected:
+            messagebox.showwarning("Предупреждение", "Выберите контакт для удаления!")
+            return
+
+        # Получаем данные выбранного контакта
+        item = selected[0]
+        contact_data = self.contact_tree.item(item)["values"]
+        name_to_delete = contact_data[0]
+
+        # Удаляем из списка
+        self.contacts = [c for c in self.contacts if c["name"] != name_to_delete]
+        self.save_contacts()
+        self.refresh_contact_list()
+        messagebox.showinfo("Успех", "Контакт удалён!")
+
+    def search_contact(self, event=None):
+        """Ищет контакты по имени"""
+        query = self.search_entry.get().lower().strip()
+
+
+        # Очищаем текущий список
+        for item in self.contact_tree.get_children():
+            self.contact_tree.delete(item)
+
+        # Показываем только подходящие контакты
+        for contact in self.contacts:
+            if query in contact["name"].lower():
+                self.contact_tree.insert("", "end", values=(contact["name"], contact["phone"]))
+
+    def clear_fields(self):
+        """Очищает поля ввода"""
+        self.name_entry.delete(0, tk.END)
+        self.phone_entry.delete(0, tk.END)
+
+
+# Запуск приложения
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = ContactBookApp(root)
+    root.mainloop()
